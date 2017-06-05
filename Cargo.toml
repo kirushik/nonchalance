@@ -8,3 +8,7 @@ authors = ["Kirill Pimenov <kirill@pimenov.cc>"]
 [dependencies.conrod]
 version = "0.52.0"
 features = ["glium", "winit"]
+
+[profile.release]
+lto = true
+panic = 'abort'

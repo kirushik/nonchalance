@@ -1,11 +1,9 @@
-//#[cfg(all(feature="winit", feature="glium"))]
 #[macro_use]
 extern crate conrod;
 
 use conrod::{widget, Colorable, Positionable, Widget};
 use conrod::backend::glium::glium;
 use conrod::backend::glium::glium::{DisplayBuild, Surface};
-// use std;
 
 pub fn main() {
     const WIDTH: u32 = 400;
