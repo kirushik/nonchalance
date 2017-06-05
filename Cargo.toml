@@ -6,10 +6,13 @@ authors = ["Kirill Pimenov <kirill@pimenov.cc>"]
 [dependencies]
 ttf-noto-sans = "0.1"
 
+hyper = "0.10.11"
+hyper-rustls = "0.6.0"
+
 [dependencies.conrod]
 version = "0.52.0"
 features = ["glium", "winit"]
 
 [profile.release]
 lto = true
-panic = 'abort'
+# panic = 'abort'
