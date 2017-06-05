@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Kirill Pimenov <kirill@pimenov.cc>"]
 
 [dependencies]
+
+[dependencies.conrod]
+version = "0.52.0"
+features = ["glium", "winit"]
