@@ -1,7 +1,10 @@
 #[macro_use]
 extern crate conrod;
 
+extern crate ttf_noto_sans;
+
 use conrod::{widget, Colorable, Positionable, Widget};
+use conrod::text::FontCollection;
 use conrod::backend::glium::glium;
 use conrod::backend::glium::glium::{DisplayBuild, Surface};
 
@@ -26,9 +29,7 @@ pub fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    const FONT_PATH: &'static str = concat!(env!("CARGO_MANIFEST_DIR"),
-                                            "/assets/fonts/NotoSans/NotoSans-Regular.ttf");
-    ui.fonts.insert_from_file(FONT_PATH).unwrap();
+    ui.fonts.insert(FontCollection::from_bytes(ttf_noto_sans::REGULAR).into_font().expect("failed to load Noto font"));
 
     // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.

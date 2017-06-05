@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Kirill Pimenov <kirill@pimenov.cc>"]
 
 [dependencies]
+ttf-noto-sans = "0.1"
 
 [dependencies.conrod]
 version = "0.52.0"
