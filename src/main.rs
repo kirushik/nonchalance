@@ -25,7 +25,7 @@ pub fn main() {
     let display = glium::glutin::WindowBuilder::new()
         .with_vsync()
         .with_dimensions(WIDTH, HEIGHT)
-        .with_title("Hello Conrod!")
+        .with_title("Nonchalance, SecureLogin application")
         .with_multisampling(4)
         .build_glium()
         .unwrap();
