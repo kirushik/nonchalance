@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Nonchalance
+Exec=/home/kpimenov/Code/Personal/nonchalance/target/debug/nonchalance %u
+Type=Application
+Terminal=false
+MimeType=x-scheme-handler/securelogin;

@@ -33,7 +33,7 @@ pub fn main() {
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
-    let mut url: String = "https://ya.ru".into();
+    let mut url: String = std::env::args().nth(1).unwrap_or("https://ya.ru".into());
     let mut response_code: String = String::new();
 
     // Generate the widget identifiers.
