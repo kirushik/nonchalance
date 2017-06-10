@@ -1,21 +1,22 @@
 #[macro_use]
 extern crate conrod;
-
 use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
 use conrod::text::FontCollection;
 use conrod::backend::glium::glium;
 use conrod::backend::glium::glium::{DisplayBuild, Surface};
-
 
 extern crate ttf_noto_sans;
 
 
 extern crate hyper;
 extern crate hyper_rustls;
-
 use hyper::Client;
 use hyper::net::HttpsConnector;
 
+extern crate url;
+use url::Url;
+
+use std::borrow::Borrow;
 
 pub fn main() {
     const WIDTH: u32 = 400;
@@ -35,6 +36,20 @@ pub fn main() {
 
     let mut url: String = std::env::args().nth(1).unwrap_or("https://ya.ru".into());
     let mut response_code: String = String::new();
+
+    let mut provider = String::new();
+    let mut state = String::new();
+
+    url = url.replacen("securelogin://#", "securelogin://?", 1); // So query parametes can be parsed as usual
+    for (parameter, argument) in Url::parse(&url).unwrap().query_pairs() {
+        match parameter.borrow() {
+            "provider" => provider = argument.into(),
+            "state" => state = argument.into(),
+            _ => println!("Unrecognized query params {}={}", parameter, argument)
+        }
+    }
+
+    println!("{:?}; {:?}", provider, state);
 
     // Generate the widget identifiers.
     widget_ids!(struct Ids { text, text_box });
