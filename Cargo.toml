@@ -9,6 +9,8 @@ ttf-noto-sans = "0.1"
 hyper = "0.10.11"
 hyper-rustls = "0.6.0"
 
+ws = "*"
+
 url = "1.4.1"
 
 ring-pwhash = "0.2.0"

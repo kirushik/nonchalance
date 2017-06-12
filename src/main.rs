@@ -13,6 +13,8 @@ extern crate hyper_rustls;
 use hyper::Client;
 use hyper::net::HttpsConnector;
 
+extern crate ws;
+
 extern crate url;
 use url::Url;
 
@@ -67,6 +69,14 @@ pub fn main() {
 
     let https_client = Client::with_connector(HttpsConnector::new(hyper_rustls::TlsClient::new()));
 
+    std::thread::spawn(move || {
+        ws::listen("127.0.0.1:3101", |out| {
+            move |msg| {
+                println!("{:?}", msg);
+                out.send("Okey-dokey!")
+            }
+        }).expect("Failed to create websocket listener on 3101!");
+    });
 
     // Poll events from the window.
     let mut last_update = std::time::Instant::now();
