@@ -7,7 +7,6 @@ use conrod::backend::glium::glium::{DisplayBuild, Surface};
 
 extern crate ttf_noto_sans;
 
-
 extern crate hyper;
 extern crate hyper_rustls;
 use hyper::Client;
@@ -20,7 +19,22 @@ use url::Url;
 
 use std::borrow::Borrow;
 
+extern crate simple_signal;
+use simple_signal::Signal;
+
 pub fn main() {
+    let pid_file = std::path::Path::new("/tmp/nonchalance.pid");
+    if pid_file.exists() {
+        println!("Another instance is already running. If it's not the case, please remove {:?} and try again", pid_file);
+        std::process::exit(1);
+    }
+
+    std::fs::File::create(pid_file).expect("Failed to create a pid file");
+    simple_signal::set_handler(&[Signal::Term, Signal::Int], move |_signals| {
+        std::fs::remove_file(pid_file).expect("Failed to remove file at exit!");
+        std::process::exit(0);
+    });
+
     const WIDTH: u32 = 400;
     const HEIGHT: u32 = 200;
 
@@ -158,8 +172,9 @@ pub fn main() {
             target.finish().unwrap();
         }
     }
-}
 
+    std::fs::remove_file(pid_file).expect("Failed to remove file at exit!");
+}
 
 fn get_status_code(client: &Client, url: &str, response_code: &mut String) {
     let res = client.get(url).send().expect("failed to get a resource");
