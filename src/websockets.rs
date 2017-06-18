@@ -1,13 +1,21 @@
-use ws::{Handler, Sender, Result, Message, Handshake, CloseCode};
+use ws::{self, Handler, Result, Message, Handshake, CloseCode};
+use url::Url;
+
+use std::sync::mpsc;
+
+pub type GuiCallbackChannel = mpsc::Sender<String>;
+pub type GuiRequestChannel = mpsc::Sender<(Url, GuiCallbackChannel)>;
 
 pub struct WSHandler {
-    out: Sender,
-    trusted_origin: bool
+    out: ws::Sender,
+    url_request_sender: GuiRequestChannel,
+    origin: Option<Url>,
+    trust_origin_in_data: bool
 }
 
 impl WSHandler {
-    pub fn new(out: Sender) -> WSHandler {
-        WSHandler{out: out, trusted_origin: false}
+    pub fn new(out: ws::Sender, url_request_sender: GuiRequestChannel) -> WSHandler {
+        WSHandler{out: out, url_request_sender: url_request_sender, origin: None, trust_origin_in_data: false}
     }
 }
 
@@ -18,14 +26,25 @@ impl Handler for WSHandler {
             handshake.peer_addr.map(|addr| addr.ip().is_loopback()).unwrap_or(false);
         if !valid_connection {
             self.out.close_with_reason(CloseCode::Error, "You're bad, invalid connection!")
+
         } else {
-            self.trusted_origin = origin==Some("http://127.0.0.1:3202");
+            self.trust_origin_in_data = origin==Some("http://127.0.0.1:3202");
+            self.origin = origin.and_then(|origin| Url::parse(origin).ok());
             Ok(())
         }
     }
 
     fn on_message(&mut self, msg: Message) -> Result<()> {
         println!("{:?}", msg);
-        self.out.send("Принято!")
+
+        let (sender, receiver) = mpsc::channel::<String>();
+        let url = if self.trust_origin_in_data {
+            unimplemented!()
+        } else {
+            self.origin.clone().expect("Hey, this Origin header has just been there recently!")
+        };
+        self.url_request_sender.send((url, sender)).expect("Cannot communicate with GUI thread");
+        let payload = receiver.recv().unwrap();
+        self.out.send(payload)
     }
 }

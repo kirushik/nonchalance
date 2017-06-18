@@ -13,15 +13,16 @@ extern crate hyper;
 extern crate hyper_rustls;
 
 extern crate ws;
+extern crate url;
+use url::Url;
 
 use std::thread;
-
+use std::sync::mpsc::channel;
 
 mod http;
 
 mod websockets;
-use websockets::WSHandler;
-
+use websockets::{WSHandler, GuiCallbackChannel};
 
 pub fn main() {
     const WIDTH: u32 = 400;
@@ -56,8 +57,9 @@ pub fn main() {
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 
+    let (url_request_sender, url_request_receiver) = channel::<(Url, GuiCallbackChannel)>();
     thread::spawn(move || {
-        ws::listen("127.0.0.1:3101", |out| WSHandler::new(out) ).expect("Failed to create websocket listener on 3101!");
+        ws::listen("127.0.0.1:3101", |out| WSHandler::new(out, url_request_sender.clone()) ).expect("Failed to create websocket listener on 3101!");
     });
 
 
@@ -66,7 +68,13 @@ pub fn main() {
     let mut ui_needs_update = true;
 
     'main: loop {
-        // We don't want to loop any faster than 60 FPS, so wait until it has been at least
+
+        if let Some((new_url, callback)) = url_request_receiver.try_recv().ok() {
+            url = new_url.into_string();
+            callback.send("Поехали!".into()).expect("Failed to send data to the Websocket handler!");
+        }
+
+        // we don't want to loop any faster than 60 fps, so wait until it has been at least
         // 16ms since the last yield.
         let sixteen_ms = std::time::Duration::from_millis(16);
         let duration_since_last_update = std::time::Instant::now().duration_since(last_update);
