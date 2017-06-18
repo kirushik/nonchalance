@@ -4,7 +4,7 @@ use url::Url;
 use std::sync::mpsc;
 
 pub type GuiCallbackChannel = mpsc::Sender<String>;
-pub type GuiRequestChannel = mpsc::Sender<(Url, GuiCallbackChannel)>;
+pub type GuiRequestChannel = mpsc::Sender<Option<(Url, GuiCallbackChannel)>>;
 
 pub struct WSHandler {
     out: ws::Sender,
@@ -43,8 +43,9 @@ impl Handler for WSHandler {
         } else {
             self.origin.clone().expect("Hey, this Origin header has just been there recently!")
         };
-        self.url_request_sender.send((url, sender)).expect("Cannot communicate with GUI thread");
+        self.url_request_sender.send(Some((url, sender))).expect("Cannot communicate with GUI thread");
         let payload = receiver.recv().unwrap();
+        self.url_request_sender.send(None).expect("Cannot communicate with GUI thread"); // Unsetting the callback
         self.out.send(payload)
     }
 }

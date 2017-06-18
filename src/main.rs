@@ -58,7 +58,7 @@ pub fn main() {
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 
-    let (url_request_sender, url_request_receiver) = channel::<(Url, GuiCallbackChannel)>();
+    let (url_request_sender, url_request_receiver) = channel::<Option<(Url, GuiCallbackChannel)>>();
     thread::spawn(move || {
         ws::listen("127.0.0.1:3101", |out| WSHandler::new(out, url_request_sender.clone()) ).expect("Failed to create websocket listener on 3101!");
     });
@@ -70,9 +70,13 @@ pub fn main() {
 
     'main: loop {
 
-        if let Some((new_url, callback_channel)) = url_request_receiver.try_recv().ok() {
-            url = new_url.into_string();
-            callback = Some(callback_channel);
+        if let Some(option) = url_request_receiver.try_recv().ok() {
+            if let Some((new_url, callback_channel)) = option {
+                url = new_url.into_string();
+                callback = Some(callback_channel);
+            } else {
+                callback = None;
+            }
         }
 
         // we don't want to loop any faster than 60 fps, so wait until it has been at least
