@@ -17,6 +17,8 @@ ring-pwhash = "0.2.0"
 
 simple-signal = "*"
 
+lazy_static = "*"
+
 [dependencies.conrod]
 version = "0.52.0"
 features = ["glium", "winit"]

@@ -5,6 +5,7 @@ dependencies = [
  "conrod 0.52.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.10.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper-rustls 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ring-pwhash 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "simple-signal 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ttf-noto-sans 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",

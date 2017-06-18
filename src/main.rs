@@ -7,47 +7,23 @@ use conrod::backend::glium::glium::{DisplayBuild, Surface};
 
 extern crate ttf_noto_sans;
 
+#[macro_use]
+extern crate lazy_static;
 extern crate hyper;
 extern crate hyper_rustls;
-use hyper::Client;
-use hyper::net::HttpsConnector;
 
 extern crate ws;
-use ws::{Handler, Sender, Result, Message, Handshake, CloseCode};
 
 use std::thread;
 
 
-struct WSHandler {
-    out: Sender,
-    trusted_origin: bool
-}
+mod http;
 
-impl Handler for WSHandler {
-    fn on_open(&mut self, handshake: Handshake) -> Result<()> {
-        let origin = handshake.request.origin().unwrap_or(None);
-        let valid_connection = origin.is_some() &&
-            handshake.peer_addr.map(|addr| addr.ip().is_loopback()).unwrap_or(false);
-        if !valid_connection {
-            self.out.close_with_reason(CloseCode::Error, "You're bad, invalid connection!")
-        } else {
-            self.trusted_origin = origin==Some("http://127.0.0.1:3202");
-            Ok(())
-        }
-    }
-
-    fn on_message(&mut self, msg: Message) -> Result<()> {
-        println!("{:?}", msg);
-        self.out.send("Принято!")
-    }
-}
+mod websockets;
+use websockets::WSHandler;
 
 
 pub fn main() {
-    thread::spawn(move || {
-        ws::listen("127.0.0.1:3101", |out| WSHandler {out: out, trusted_origin: false} ).expect("Failed to create websocket listener on 3101!");
-    });
-
     const WIDTH: u32 = 400;
     const HEIGHT: u32 = 200;
 
@@ -80,14 +56,16 @@ pub fn main() {
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
 
-    let https_client = Client::with_connector(HttpsConnector::new(hyper_rustls::TlsClient::new()));
+    thread::spawn(move || {
+        ws::listen("127.0.0.1:3101", |out| WSHandler::new(out) ).expect("Failed to create websocket listener on 3101!");
+    });
 
 
     // Poll events from the window.
     let mut last_update = std::time::Instant::now();
     let mut ui_needs_update = true;
-    'main: loop {
 
+    'main: loop {
         // We don't want to loop any faster than 60 FPS, so wait until it has been at least
         // 16ms since the last yield.
         let sixteen_ms = std::time::Duration::from_millis(16);
@@ -149,7 +127,7 @@ pub fn main() {
                                             use conrod::widget::text_box::Event::*;
                                             match event {
                                                 Update(new_url) => url = new_url,
-                                                Enter => get_status_code(&https_client, &url, &mut response_code)
+                                                Enter => http::get_status_code(&url, &mut response_code)
                                             }
                                         }
         }
@@ -163,9 +141,4 @@ pub fn main() {
             target.finish().unwrap();
         }
     }
-}
-
-fn get_status_code(client: &Client, url: &str, response_code: &mut String) {
-    let res = client.get(url).send().expect("failed to get a resource");
-    *response_code = format!("{}", res.status);
 }
