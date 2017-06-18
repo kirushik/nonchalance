@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate conrod;
-use conrod::{widget, Colorable, Positionable, Sizeable, Widget};
+use conrod::{widget, Colorable, Positionable, Sizeable, Labelable, Widget};
 use conrod::text::FontCollection;
 use conrod::backend::glium::glium;
 use conrod::backend::glium::glium::{DisplayBuild, Surface};
@@ -42,9 +42,10 @@ pub fn main() {
 
     let mut url: String = std::env::args().nth(1).unwrap_or("https://ya.ru".into());
     let mut response_code: String = String::new();
+    let mut callback: Option<GuiCallbackChannel> = None;
 
     // Generate the widget identifiers.
-    widget_ids!(struct Ids { text, text_box });
+    widget_ids!(struct Ids { text, button, text_box });
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
@@ -69,9 +70,9 @@ pub fn main() {
 
     'main: loop {
 
-        if let Some((new_url, callback)) = url_request_receiver.try_recv().ok() {
+        if let Some((new_url, callback_channel)) = url_request_receiver.try_recv().ok() {
             url = new_url.into_string();
-            callback.send("Поехали!".into()).expect("Failed to send data to the Websocket handler!");
+            callback = Some(callback_channel);
         }
 
         // we don't want to loop any faster than 60 fps, so wait until it has been at least
@@ -121,6 +122,14 @@ pub fn main() {
                 .color(conrod::color::WHITE)
                 .font_size(32)
                 .set(ids.text, ui);
+
+            for _click in widget::Button::new()
+                .middle_of(ui.window)
+                .w_h(80.0, 80.0)
+                .label("GO")
+                .set(ids.button, ui) {
+                    callback.clone().map(|tx| tx.send("Приехали!".into()));
+                }
 
             for event in widget::TextBox::new(url.as_str())
                                         .left_justify()
