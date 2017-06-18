@@ -13,26 +13,39 @@ use hyper::Client;
 use hyper::net::HttpsConnector;
 
 extern crate ws;
+use ws::{Handler, Sender, Result, Message, Handshake, CloseCode};
 
-extern crate url;
-use url::Url;
+use std::thread;
 
-use std::borrow::Borrow;
 
-extern crate simple_signal;
-use simple_signal::Signal;
+struct WSHandler {
+    out: Sender,
+    trusted_origin: bool
+}
 
-pub fn main() {
-    let pid_file = std::path::Path::new("/tmp/nonchalance.pid");
-    if pid_file.exists() {
-        println!("Another instance is already running. If it's not the case, please remove {:?} and try again", pid_file);
-        std::process::exit(1);
+impl Handler for WSHandler {
+    fn on_open(&mut self, handshake: Handshake) -> Result<()> {
+        let origin = handshake.request.origin().unwrap_or(None);
+        let valid_connection = origin.is_some() &&
+            handshake.peer_addr.map(|addr| addr.ip().is_loopback()).unwrap_or(false);
+        if !valid_connection {
+            self.out.close_with_reason(CloseCode::Error, "You're bad, invalid connection!")
+        } else {
+            self.trusted_origin = origin==Some("http://127.0.0.1:3202");
+            Ok(())
+        }
     }
 
-    std::fs::File::create(pid_file).expect("Failed to create a pid file");
-    simple_signal::set_handler(&[Signal::Term, Signal::Int], move |_signals| {
-        std::fs::remove_file(pid_file).expect("Failed to remove file at exit!");
-        std::process::exit(0);
+    fn on_message(&mut self, msg: Message) -> Result<()> {
+        println!("{:?}", msg);
+        self.out.send("Принято!")
+    }
+}
+
+
+pub fn main() {
+    thread::spawn(move || {
+        ws::listen("127.0.0.1:3101", |out| WSHandler {out: out, trusted_origin: false} ).expect("Failed to create websocket listener on 3101!");
     });
 
     const WIDTH: u32 = 400;
@@ -53,20 +66,6 @@ pub fn main() {
     let mut url: String = std::env::args().nth(1).unwrap_or("https://ya.ru".into());
     let mut response_code: String = String::new();
 
-    let mut provider = String::new();
-    let mut state = String::new();
-
-    url = url.replacen("securelogin://#", "securelogin://?", 1); // So query parametes can be parsed as usual
-    for (parameter, argument) in Url::parse(&url).unwrap().query_pairs() {
-        match parameter.borrow() {
-            "provider" => provider = argument.into(),
-            "state" => state = argument.into(),
-            _ => println!("Unrecognized query params {}={}", parameter, argument)
-        }
-    }
-
-    println!("{:?}; {:?}", provider, state);
-
     // Generate the widget identifiers.
     widget_ids!(struct Ids { text, text_box });
     let ids = Ids::new(ui.widget_id_generator());
@@ -83,14 +82,6 @@ pub fn main() {
 
     let https_client = Client::with_connector(HttpsConnector::new(hyper_rustls::TlsClient::new()));
 
-    std::thread::spawn(move || {
-        ws::listen("127.0.0.1:3101", |out| {
-            move |msg| {
-                println!("{:?}", msg);
-                out.send("Okey-dokey!")
-            }
-        }).expect("Failed to create websocket listener on 3101!");
-    });
 
     // Poll events from the window.
     let mut last_update = std::time::Instant::now();
@@ -172,8 +163,6 @@ pub fn main() {
             target.finish().unwrap();
         }
     }
-
-    std::fs::remove_file(pid_file).expect("Failed to remove file at exit!");
 }
 
 fn get_status_code(client: &Client, url: &str, response_code: &mut String) {
