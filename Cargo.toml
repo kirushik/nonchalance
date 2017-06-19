@@ -4,23 +4,15 @@ version = "0.1.0"
 authors = ["Kirill Pimenov <kirill@pimenov.cc>"]
 
 [dependencies]
-ttf-noto-sans = "0.1"
-
-hyper = "0.10.11"
-hyper-rustls = "0.6.0"
-
+ttf-noto-sans = "*"
 ws = "*"
-
-url = "1.4.1"
-
-ring-pwhash = "0.2.0"
-
+url = "*"
+ring-pwhash = "*"
 simple-signal = "*"
-
 lazy_static = "*"
 
 [dependencies.conrod]
-version = "0.52.0"
+version = "0.53.0"
 features = ["glium", "winit"]
 
 [profile.release]

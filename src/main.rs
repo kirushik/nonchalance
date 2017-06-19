@@ -1,25 +1,17 @@
 #[macro_use]
 extern crate conrod;
-use conrod::{widget, Colorable, Positionable, Sizeable, Labelable, Widget};
+use conrod::{widget, Positionable, Sizeable, Labelable, Widget};
 use conrod::text::FontCollection;
 use conrod::backend::glium::glium;
 use conrod::backend::glium::glium::{DisplayBuild, Surface};
 
 extern crate ttf_noto_sans;
-
-#[macro_use]
-extern crate lazy_static;
-extern crate hyper;
-extern crate hyper_rustls;
-
 extern crate ws;
 extern crate url;
 use url::Url;
 
 use std::thread;
 use std::sync::mpsc::channel;
-
-mod http;
 
 mod websockets;
 use websockets::{WSHandler, GuiCallbackChannel};
@@ -41,11 +33,10 @@ pub fn main() {
     let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     let mut url: String = std::env::args().nth(1).unwrap_or("https://ya.ru".into());
-    let mut response_code: String = String::new();
     let mut callback: Option<GuiCallbackChannel> = None;
 
     // Generate the widget identifiers.
-    widget_ids!(struct Ids { text, button, text_box });
+    widget_ids!(struct Ids { button, text_box });
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
@@ -121,12 +112,6 @@ pub fn main() {
         {
             let ui = &mut ui.set_widgets();
 
-            widget::Text::new(response_code.as_str())
-                .mid_bottom_of(ui.window)
-                .color(conrod::color::WHITE)
-                .font_size(32)
-                .set(ids.text, ui);
-
             for _click in widget::Button::new()
                 .middle_of(ui.window)
                 .w_h(80.0, 80.0)
@@ -148,7 +133,7 @@ pub fn main() {
                                             use conrod::widget::text_box::Event::*;
                                             match event {
                                                 Update(new_url) => url = new_url,
-                                                Enter => http::get_status_code(&url, &mut response_code)
+                                                Enter => {}
                                             }
                                         }
         }
