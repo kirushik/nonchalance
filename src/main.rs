@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate conrod;
-use conrod::{widget, Positionable, Sizeable, Labelable, Widget};
+use conrod::{widget, Positionable, Colorable, Sizeable, Labelable, Widget};
 use conrod::text::FontCollection;
 use conrod::backend::glium::glium;
 use conrod::backend::glium::glium::{DisplayBuild, Surface};
@@ -9,6 +9,10 @@ extern crate ttf_noto_sans;
 extern crate ws;
 extern crate url;
 use url::Url;
+
+extern crate ring_pwhash;
+use ring_pwhash::scrypt::{scrypt, ScryptParams};
+extern crate base64;
 
 use std::thread;
 use std::sync::mpsc::channel;
@@ -32,11 +36,12 @@ pub fn main() {
     // construct our `Ui`.
     let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
-    let mut url: String = std::env::args().nth(1).unwrap_or("https://ya.ru".into());
+    let mut url: String = "<unknown>".into();
+    let mut master_password: String = "correct horse".into();
     let mut callback: Option<GuiCallbackChannel> = None;
 
     // Generate the widget identifiers.
-    widget_ids!(struct Ids { button, text_box });
+    widget_ids!(struct Ids { domain_label, text_box, button });
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
@@ -112,17 +117,23 @@ pub fn main() {
         {
             let ui = &mut ui.set_widgets();
 
+            widget::Text::new(url.as_str())
+                .mid_top_of(ui.window)
+                .padded_w_of(ui.window, 20.0)
+                .color(conrod::color::WHITE)
+                .set(ids.domain_label, ui);
+
             for _click in widget::Button::new()
-                .middle_of(ui.window)
+                .mid_bottom_of(ui.window)
                 .w_h(80.0, 80.0)
                 .label("GO")
                 .set(ids.button, ui) {
-                    callback.clone().map(|tx| tx.send("Приехали!".into()));
+                    callback.clone().map(|tx| tx.send(sltoken(&master_password, "user@example.com")));
                 }
 
-            for event in widget::TextBox::new(url.as_str())
+            for event in widget::TextBox::new(master_password.as_str())
                                         .left_justify()
-                                        .mid_top_of(ui.window)
+                                        .middle_of(ui.window)
                                         .padded_w_of(ui.window, 20.0)
                                         // .border(1.0)
                                         // .border_color(conrod::color::WHITE)
@@ -132,7 +143,7 @@ pub fn main() {
                                         {
                                             use conrod::widget::text_box::Event::*;
                                             match event {
-                                                Update(new_url) => url = new_url,
+                                                Update(new_password) => master_password = new_password,
                                                 Enter => {}
                                             }
                                         }
@@ -147,4 +158,11 @@ pub fn main() {
             target.finish().unwrap();
         }
     }
+}
+
+fn sltoken(password: &str, identity: &str) -> String {
+    let mut result = [0u8; 32];
+    scrypt(password.as_bytes(), identity.as_bytes(), &ScryptParams::new(18, 8, 6), &mut result);
+    println!("{:?}", base64::encode(&result));
+    base64::encode(&result)
 }

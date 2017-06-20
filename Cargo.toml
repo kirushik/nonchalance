@@ -8,6 +8,7 @@ ttf-noto-sans = "*"
 ws = "*"
 url = "*"
 ring-pwhash = "*"
+base64 = "*"
 simple-signal = "*"
 lazy_static = "*"
 
