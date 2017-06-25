@@ -11,7 +11,6 @@ extern crate url;
 use url::Url;
 
 extern crate ring_pwhash;
-use ring_pwhash::scrypt::{scrypt, ScryptParams};
 extern crate base64;
 
 use std::thread;
@@ -19,6 +18,9 @@ use std::sync::mpsc::channel;
 
 mod websockets;
 use websockets::{WSHandler, GuiCallbackChannel};
+
+mod profile;
+use profile::Profile;
 
 pub fn main() {
     const WIDTH: u32 = 400;
@@ -38,6 +40,9 @@ pub fn main() {
 
     let mut url: String = "<unknown>".into();
     let mut master_password: String = "correct horse".into();
+
+    let profile = Profile::new("user@example.com", &master_password);
+
     let mut callback: Option<GuiCallbackChannel> = None;
 
     // Generate the widget identifiers.
@@ -45,7 +50,10 @@ pub fn main() {
     let ids = Ids::new(ui.widget_id_generator());
 
     // Add a `Font` to the `Ui`'s `font::Map` from file.
-    ui.fonts.insert(FontCollection::from_bytes(ttf_noto_sans::REGULAR).into_font().expect("failed to load Noto font"));
+    ui.fonts
+        .insert(FontCollection::from_bytes(ttf_noto_sans::REGULAR)
+                    .into_font()
+                    .expect("failed to load Noto font"));
 
     // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
     // for drawing to the glium `Surface`.
@@ -56,8 +64,10 @@ pub fn main() {
 
     let (url_request_sender, url_request_receiver) = channel::<Option<(Url, GuiCallbackChannel)>>();
     thread::spawn(move || {
-        ws::listen("127.0.0.1:3101", |out| WSHandler::new(out, url_request_sender.clone()) ).expect("Failed to create websocket listener on 3101!");
-    });
+                      ws::listen("127.0.0.1:3101",
+                                 |out| WSHandler::new(out, url_request_sender.clone()))
+                              .expect("Failed to create websocket listener on 3101!");
+                  });
 
 
     // Poll events from the window.
@@ -124,12 +134,14 @@ pub fn main() {
                 .set(ids.domain_label, ui);
 
             for _click in widget::Button::new()
-                .mid_bottom_of(ui.window)
-                .w_h(80.0, 80.0)
-                .label("GO")
-                .set(ids.button, ui) {
-                    callback.clone().map(|tx| tx.send(sltoken(&master_password, "user@example.com")));
-                }
+                    .mid_bottom_of(ui.window)
+                    .w_h(80.0, 80.0)
+                    .label("GO")
+                    .set(ids.button, ui) {
+                callback
+                    .clone()
+                    .map(|tx| tx.send(profile.sltoken_for(&url)));
+            }
 
             for event in widget::TextBox::new(master_password.as_str())
                                         .left_justify()
@@ -139,14 +151,13 @@ pub fn main() {
                                         // .border_color(conrod::color::WHITE)
                                         // .color(conrod::color::WHITE)
                                         .font_size(16)
-                                        .set(ids.text_box, ui)
-                                        {
-                                            use conrod::widget::text_box::Event::*;
-                                            match event {
-                                                Update(new_password) => master_password = new_password,
-                                                Enter => {}
-                                            }
-                                        }
+                                        .set(ids.text_box, ui) {
+                use conrod::widget::text_box::Event::*;
+                match event {
+                    Update(new_password) => master_password = new_password,
+                    Enter => {}
+                }
+            }
         }
 
         // Render the `Ui` and then display it on the screen.
@@ -158,11 +169,4 @@ pub fn main() {
             target.finish().unwrap();
         }
     }
-}
-
-fn sltoken(password: &str, identity: &str) -> String {
-    let mut result = [0u8; 32];
-    scrypt(password.as_bytes(), identity.as_bytes(), &ScryptParams::new(18, 8, 6), &mut result);
-    println!("{:?}", base64::encode(&result));
-    base64::encode(&result)
 }
