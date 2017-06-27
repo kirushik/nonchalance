@@ -11,10 +11,19 @@ ring-pwhash = "*"
 base64 = "*"
 simple-signal = "*"
 lazy_static = "*"
+app_dirs = "*"
 
 [dependencies.conrod]
 version = "0.53.0"
 features = ["glium", "winit"]
+
+[dependencies.chacha20-poly1305-aead]
+version = "0.1.2"
+features = ["simd"]
+
+[dependencies.argon2rs]
+version = "0.2.5"
+features = ["simd"]
 
 [profile.release]
 lto = true
