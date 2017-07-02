@@ -1,48 +1,71 @@
-extern crate argon2rs;
-use argon2rs::argon2d_simple as kdf;
+#[macro_use]
+extern crate serde_derive;
+extern crate bincode;
+use bincode::{serialize, deserialize, Infinite};
 
-extern crate chacha20_poly1305_aead;
-use chacha20_poly1305_aead::{encrypt, decrypt};
+extern crate ring;
+use ring::aead::{SealingKey, OpeningKey, seal_in_place, open_in_place};
+use ring::aead::CHACHA20_POLY1305 as CYPHER;
+
+extern crate rand;
+use rand::random;
+
+extern crate ring_pwhash;
+use ring_pwhash::scrypt::{scrypt, ScryptParams};
 
 use std::io::{Read, Write};
 
 const SALT: &str = "vRNsYGE64KkdvXA8zCcP234793kxJ8fD";
 
+#[derive(Serialize, Deserialize, Debug)]
+struct Foo {
+    bar: String,
+    baz: Option<Vec<u64>>
+}
+
 fn main() {
     let password = "password";
-    let key = kdf(password, SALT);
-
-    let nonce = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    let aad = [1, 2, 3, 4];
+    let mut key = [0u8; 32];
+    scrypt(password.as_bytes(), SALT.as_bytes(), &ScryptParams::new(17, 8, 2), &mut key);
 
     let path = std::path::Path::new("/home/kpimenov/crypto");
     if path.exists() {
         println!("File found");
-        let mut tag = [0u8; 16];
-        let mut ciphertext = vec![];
-
         let mut file = std::fs::File::open(path).expect("Failed to open file");
 
-        file.read_exact(&mut tag).expect("Failed to read AEAD header");
-        file.read_to_end(&mut ciphertext).expect("Failed to read encrypted data");
+        let mut nonce = [0u8; 12];
+        file.read_exact(&mut nonce).expect("Failed to read nonce header");
+        
+        let mut buffer = vec![];
+        file.read_to_end(&mut buffer).expect("Failed to read encrypted data");
 
-        let mut plaintext = Vec::with_capacity(ciphertext.len());
+        let key = OpeningKey::new(&CYPHER, &key).expect("Failed to initialize an OpeningKey");
+        let plaintext = open_in_place(&key, &nonce, &[], 0, &mut buffer).expect("Decryption failed");
 
-        decrypt(&key, &nonce, &aad, &ciphertext, &tag, &mut plaintext).expect("Decription failed");
+        let data = deserialize::<Foo>(&plaintext).expect("Deserialization failed!");
 
-        println!("Decrypted content is\n\t{:?}", plaintext);
+        println!("Decrypted content is\n\t{:?}", data);
     } else {
         println!("File not found, creating!");
 
-        let plaintext = b"hello, world";
+        let plaintext = Foo{
+            bar: "hey-hey!".into(),
+            baz: None
+        };
+
         println!("Pre-encryption content is\n\t{:?}", plaintext);
 
-        let mut ciphertext = Vec::with_capacity(plaintext.len());
-
-        let tag = encrypt(&key, &nonce, &aad, plaintext, &mut ciphertext).expect("Encryption failed");
+        let mut buffer = serialize(&plaintext, Infinite).expect("serialization failed");
+        buffer.extend_from_slice(&[0u8; 32]);
 
         let mut file = std::fs::File::create(path).expect("Failed to create a file");
-        file.write_all(&tag).expect("Failed to write AEAD header");
-        file.write_all(&ciphertext).expect("Failed to write ciphertext");
+
+        let nonce: [u8; 12] = random();
+        file.write_all(&nonce).expect("Failed to write nonce header");
+
+        let key = SealingKey::new(&CYPHER, &key).expect("Failed to initialize a SealingKey");
+        seal_in_place(&key, &nonce, &[], &mut buffer, CYPHER.tag_len()).expect("Encryption failed");
+
+        file.write_all(&buffer).expect("Failed to write ciphertext");
     }
 }
